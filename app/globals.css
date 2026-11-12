@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { margin: 0; background: #f5f6f8; color: #20242b; font-family: 'DM Sans', sans-serif; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+::selection { background: #dce8e3; }
+.app-shell { min-height: 100vh; }
+.sidebar { width: 248px; background: #17231f; color: #d7e0db; }
+.main-area { min-width: 0; flex: 1; }
+.nav-item { display:flex; align-items:center; gap:12px; width:100%; padding:10px 12px; border-radius:9px; color:#aebbb4; font-size:13px; text-align:left; transition:.15s; }
+.nav-item:hover { background:#26352f; color:white; }
+.nav-item.active { background:#31483e; color:#fff; }
+.panel { background:#fff; border:1px solid #e8eaed; border-radius:13px; }
+.eyebrow { font-size:10px; font-weight:700; letter-spacing:.12em; color:#87918c; text-transform:uppercase; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:8px; padding:9px 13px; font-size:12px; font-weight:700; transition:.15s; }
+.btn-primary { background:#263f34; color:#fff; }
+.btn-primary:hover { background:#1b3027; }
+.btn-secondary { background:#fff; border:1px solid #e0e4e1; color:#36423b; }
+.btn-secondary:hover { background:#f7f8f7; }
+.btn-danger { background:#fff2ef; color:#b44836; }
+.field { width:100%; border:1px solid #dfe4e1; border-radius:8px; padding:10px 11px; outline:none; background:#fff; font-size:13px; }
+.field:focus { border-color:#6b8a79; box-shadow:0 0 0 3px #6b8a791a; }
+.label { display:block; margin-bottom:6px; color:#626d66; font-size:11px; font-weight:700; }
+.badge { display:inline-flex; align-items:center; border-radius:99px; padding:4px 8px; font-size:10px; font-weight:700; white-space:nowrap; }
+.badge-green { background:#e9f4ed; color:#39734e; }
+.badge-amber { background:#fff4df; color:#9b6a16; }
+.badge-red { background:#ffefec; color:#b54a3b; }
+.badge-gray { background:#f0f2f1; color:#68736c; }
+.stat-number { font-family:Manrope,sans-serif; font-size:27px; font-weight:800; letter-spacing:-1px; }
+.progress-track { height:6px; border-radius:99px; background:#edf0ee; overflow:hidden; }
+.progress-fill { height:100%; border-radius:99px; background:#648774; }
+.table-row { border-bottom:1px solid #f0f1f2; }
+.table-row:last-child { border-bottom:0; }
+.mobile-nav { display:none; }
+@media (max-width: 767px) {
+  .sidebar { display:none; }
+  .mobile-nav { display:flex; }
+  .main-content { padding:18px 14px 92px !important; }
+  .desktop-only { display:none !important; }
+  .stat-number { font-size:23px; }
+}
