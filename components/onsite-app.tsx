@@ -7,7 +7,8 @@ import {
   FileText, Filter, HardHat, Home, LayoutDashboard, LogOut, Menu, MessageSquare,
   Package, Plus, Search, Settings, ShieldCheck, Users, X, Camera, MapPin, MoreHorizontal,
   Truck, ClipboardCheck, ChartNoAxesCombined, FolderKanban, CircleHelp, Send, Eye,
-  CalendarCheck, ListChecks, UserRound, Warehouse, Flag, FilePlus2, SlidersHorizontal
+  CalendarCheck, ListChecks, UserRound, Warehouse, Flag, FilePlus2, SlidersHorizontal,
+  Mail, LockKeyhole, Building2, Phone
 } from "lucide-react";
 
 type Role = "Site Captain" | "Project Lead" | "Admin";
@@ -69,6 +70,17 @@ export default function OnSiteApp() {
   const [logText,setLogText] = useState("Completed excavation marking and prepared reinforcement materials.");
   const [issueText,setIssueText] = useState("");
   const [activeTab,setActiveTab] = useState("Overview");
+  const [authView,setAuthView] = useState<"login"|"register">("login");
+  const [authenticated,setAuthenticated] = useState(false);
+  const [authName,setAuthName] = useState("Aminu Bello");
+  const [authEmail,setAuthEmail] = useState("");
+  const [authPassword,setAuthPassword] = useState("");
+  const [registerName,setRegisterName] = useState("");
+  const [registerEmail,setRegisterEmail] = useState("");
+  const [registerPhone,setRegisterPhone] = useState("");
+  const [registerCompany,setRegisterCompany] = useState("");
+  const [authRole,setAuthRole] = useState<Role>("Site Captain");
+  const [authNotice,setAuthNotice] = useState("");
 
   useEffect(()=>{ const saved=localStorage.getItem("onsite-demo-state"); if(saved){try{const d=JSON.parse(saved); if(d.stages)setStages(d.stages);if(d.queue)setQueue(d.queue);if(typeof d.cement==="number")setCement(d.cement);}catch{}} },[]);
   useEffect(()=>{ localStorage.setItem("onsite-demo-state",JSON.stringify({stages,queue,cement})); },[stages,queue,cement]);
@@ -89,7 +101,7 @@ export default function OnSiteApp() {
   const nav = <div className="flex-1 overflow-y-auto px-3 pb-5">{navGroups.map(group=><div key={group.label} className="mt-6"><div className="px-3 mb-2 text-[9px] font-bold tracking-[.16em] text-[#73847b]">{group.label}</div>{group.items.map(([key,label,Icon])=><button key={key} onClick={()=>go(key as Screen)} className={cn("nav-item",screen===key&&"active")}><Icon size={16}/><span>{label}</span>{key==="inbox"&&<span className="ml-auto rounded-full bg-[#c78d48] px-1.5 py-0.5 text-[9px] text-white">3</span>}</button>)}</div>)}</div>;
 
   const renderToday=()=> <div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="eyebrow">THURSDAY, 12 NOVEMBER 2026 · LAGOS PROJECT</div><h1 className="text-2xl font-extrabold tracking-tight mt-1" style={{fontFamily:"Manrope"}}>Good morning, Aminu <span>☀️</span></h1><p className="text-sm text-gray-500 mt-1">Here&apos;s what&apos;s happening on site today.</p></div><Button onClick={()=>setCaptureOpen(true)}><Plus size={15}/> Capture update</Button></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="eyebrow">THURSDAY, 12 NOVEMBER 2026 · LAGOS PROJECT</div><h1 className="text-2xl font-extrabold tracking-tight mt-1" style={{fontFamily:"Manrope"}}>Good morning, {authName.split(" ")[0]} <span>☀️</span></h1><p className="text-sm text-gray-500 mt-1">Here&apos;s what&apos;s happening on site today.</p></div><Button onClick={()=>setCaptureOpen(true)}><Plus size={15}/> Capture update</Button></div>
     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3"><Stat label="Project progress" value="18%" change="Based on approved work steps" icon={ChartNoAxesCombined}/><Stat label="Workers on site" value={`${attendance.length}`} change="Attendance recorded today" icon={Users}/><Stat label="Pending reviews" value={`${pending.length}`} change="Awaiting project lead" icon={ClipboardCheck}/><Stat label="Cement in store" value={`${cement} bags`} change="Available stock balance" icon={Warehouse}/></div>
     {queue.some(q=>q.status==="Returned")&&<Card className="p-4 border-l-4 border-l-[#c66c54]"><div className="flex gap-3"><AlertCircle className="text-[#bd604b]" size={19}/><div className="flex-1"><div className="font-bold text-sm">Fix this · Update returned</div><p className="text-xs text-gray-500 mt-1">{queue.find(q=>q.status==="Returned")?.detail}</p><button onClick={()=>go("update")} className="text-xs font-bold text-[#527461] mt-2">Review and resubmit <ArrowRight className="inline" size={12}/></button></div></div></Card>}
     <div className="grid lg:grid-cols-[1.45fr_1fr] gap-4">
@@ -141,12 +153,68 @@ export default function OnSiteApp() {
   };
 
   const changeRole=(r:Role)=>{setRole(r);go(r==="Site Captain"?"today":r==="Project Lead"?"plhome":"rules");};
+  const enterWorkspace=(name:string,r:Role)=>{
+    setAuthName(name.trim() || "Aminu Bello");
+    setRole(r);
+    setScreen(r==="Site Captain"?"today":r==="Project Lead"?"plhome":"rules");
+    setAuthenticated(true);
+    setAuthPassword("");
+    setAuthNotice("");
+  };
+
+  if(!authenticated) return <main className="auth-page min-h-screen flex flex-col lg:flex-row">
+    <section className="auth-brand-panel relative flex flex-col justify-between p-7 sm:p-10 lg:p-14 lg:w-[48%] min-h-[310px] lg:min-h-screen overflow-hidden">
+      <div className="relative z-10 flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-white text-[#171717] flex items-center justify-center"><Construction size={24}/></div>
+        <div><div className="text-white text-2xl font-extrabold tracking-tight" style={{fontFamily:"Manrope"}}>OnSite<span className="text-gray-400">.</span></div><div className="text-[9px] tracking-[.2em] text-gray-400 font-bold">PROJECT WORKSPACE</div></div>
+      </div>
+      <div className="relative z-10 max-w-xl py-10 lg:py-0">
+        <div className="auth-kicker"><span className="w-2 h-2 rounded-full bg-white inline-block mr-2"/> CONSTRUCTION PROJECT MANAGEMENT</div>
+        <h1 className="text-4xl sm:text-5xl xl:text-6xl leading-[1.05] font-extrabold tracking-tight text-white mt-6" style={{fontFamily:"Manrope"}}>Every site.<br/>Every stage.<br/><span className="text-gray-400">In sync.</span></h1>
+        <p className="text-sm sm:text-base text-gray-300 leading-7 mt-6 max-w-md">Keep your site team, project updates and approvals connected in one shared workspace.</p>
+        <div className="mt-9 space-y-4 text-sm text-gray-300">
+          {["Track work progress across project stages","Keep reports, photos and documents together","Move reviews and approvals forward"].map(item=><div key={item} className="flex items-center gap-3"><span className="w-6 h-6 rounded-full border border-gray-600 flex items-center justify-center"><Check size={13}/></span>{item}</div>)}
+        </div>
+      </div>
+      <div className="relative z-10 flex items-center justify-between text-[10px] text-gray-500 tracking-wide"><span>BUILT FOR THE PEOPLE WHO BUILD.</span><span>ONSITE · PROTOTYPE</span></div>
+      <div className="auth-grid-mark" aria-hidden="true"/>
+    </section>
+
+    <section className="flex-1 flex items-center justify-center px-5 py-10 sm:px-10 lg:px-14 bg-[#f5f5f4]">
+      <div className="w-full max-w-[440px]">
+        <div className="mb-8 lg:hidden flex items-center gap-2 text-lg font-extrabold"><span className="w-8 h-8 rounded-lg bg-[#171717] text-white flex items-center justify-center"><Construction size={17}/></span>OnSite.</div>
+        <div className="mb-8"><div className="auth-kicker text-gray-500">{authView==="login"?"WELCOME BACK":"GET STARTED"}</div><h2 className="text-3xl font-extrabold tracking-tight mt-3 text-[#171717]" style={{fontFamily:"Manrope"}}>{authView==="login"?"Sign in to OnSite":"Create your account"}</h2><p className="text-sm text-gray-500 mt-2">{authView==="login"?"Access your construction project workspace.":"Set up your profile to join your project workspace."}</p></div>
+
+        <div className="auth-card bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-[0_12px_40px_rgba(0,0,0,0.04)]">
+          {authView==="login"?<form onSubmit={e=>{e.preventDefault();enterWorkspace("Aminu Bello",authRole);}} className="space-y-5">
+            <div><label className="auth-label" htmlFor="login-email">Email address</label><div className="auth-input-wrap"><Mail size={17}/><input id="login-email" className="auth-input" type="text" autoComplete="off" placeholder="you@company.com" value={authEmail} onChange={e=>setAuthEmail(e.target.value)}/></div></div>
+            <div><div className="flex justify-between items-center"><label className="auth-label" htmlFor="login-password">Password</label><button type="button" onClick={()=>setAuthNotice("Password reset will be connected when authentication is implemented.")} className="text-[11px] font-bold text-gray-500 hover:text-black">Forgot password?</button></div><div className="auth-input-wrap"><LockKeyhole size={17}/><input id="login-password" className="auth-input" type="password" autoComplete="off" placeholder="Enter your password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)}/></div></div>
+            <div><label className="auth-label" htmlFor="login-role">Enter demo workspace as</label><div className="auth-input-wrap"><UserRound size={17}/><select id="login-role" className="auth-input bg-transparent" value={authRole} onChange={e=>setAuthRole(e.target.value as Role)}><option>Site Captain</option><option>Project Lead</option><option>Admin</option></select></div></div>
+            {authNotice&&<p className="text-xs text-gray-500 bg-gray-100 rounded-lg p-3">{authNotice}</p>}
+            <button type="submit" className="auth-submit">Sign in <ArrowRight size={16}/></button>
+            <p className="text-center text-[10px] text-gray-400">Demo mode · any email and password will work</p>
+          </form>:<form onSubmit={e=>{e.preventDefault();enterWorkspace(registerName,authRole);}} className="space-y-4">
+            <div><label className="auth-label" htmlFor="register-name">Full name</label><div className="auth-input-wrap"><UserRound size={17}/><input id="register-name" className="auth-input" type="text" placeholder="Your full name" value={registerName} onChange={e=>setRegisterName(e.target.value)}/></div></div>
+            <div><label className="auth-label" htmlFor="register-email">Work email</label><div className="auth-input-wrap"><Mail size={17}/><input id="register-email" className="auth-input" type="text" placeholder="you@company.com" value={registerEmail} onChange={e=>setRegisterEmail(e.target.value)}/></div></div>
+            <div className="grid sm:grid-cols-2 gap-3"><div><label className="auth-label" htmlFor="register-phone">Phone number</label><div className="auth-input-wrap"><Phone size={16}/><input id="register-phone" className="auth-input" type="text" placeholder="+60..." value={registerPhone} onChange={e=>setRegisterPhone(e.target.value)}/></div></div><div><label className="auth-label" htmlFor="register-company">Company</label><div className="auth-input-wrap"><Building2 size={16}/><input id="register-company" className="auth-input" type="text" placeholder="Company name" value={registerCompany} onChange={e=>setRegisterCompany(e.target.value)}/></div></div></div>
+            <div><label className="auth-label" htmlFor="register-role">Your role</label><div className="auth-input-wrap"><UserRound size={17}/><select id="register-role" className="auth-input bg-transparent" value={authRole} onChange={e=>setAuthRole(e.target.value as Role)}><option>Site Captain</option><option>Project Lead</option><option>Admin</option></select></div></div>
+            <div><label className="auth-label" htmlFor="register-password">Create password</label><div className="auth-input-wrap"><LockKeyhole size={17}/><input id="register-password" className="auth-input" type="password" placeholder="Create a password" /></div></div>
+            <button type="submit" className="auth-submit mt-2">Create account <ArrowRight size={16}/></button>
+          </form>}
+          <div className="auth-switch">{authView==="login"?<>New to OnSite? <button onClick={()=>{setAuthView("register");setAuthNotice("");}}>Create an account</button></>:<>Already have an account? <button onClick={()=>{setAuthView("login");setAuthNotice("");}}>Sign in</button></>}</div>
+        </div>
+        <div className="mt-5 flex items-start gap-2 text-[10px] leading-5 text-gray-500"><ShieldCheck size={15} className="shrink-0 mt-0.5"/><span>Prototype access only. These forms do not verify credentials or create a stored account. Authentication and account security will be implemented for production.</span></div>
+        <div className="mt-8 text-center text-[10px] text-gray-400">© 2026 OnSite · Construction project workspace</div>
+      </div>
+    </section>
+  </main>;
+
   return <div className="app-shell flex">
     <aside className="sidebar min-h-screen flex flex-col fixed top-0 left-0 bottom-0 z-30">
       <div className="px-5 pt-6 pb-5 flex items-center gap-3"><div className="w-9 h-9 rounded-xl bg-[#d9e7dd] text-[#263f34] flex items-center justify-center"><Construction size={20}/></div><div><div className="text-white font-extrabold tracking-wide text-lg" style={{fontFamily:"Manrope"}}>OnSite<span className="text-[#9ab5a3]">.</span></div><div className="text-[9px] tracking-[.15em] text-[#91a198]">PROJECT WORKSPACE</div></div></div>
       <div className="mx-4 p-3 rounded-xl bg-[#22332b] mb-1"><div className="text-[9px] text-[#92a49a] tracking-widest font-bold">ACTIVE PROJECT</div><div className="text-xs text-white font-bold mt-1">Lagos Residential Complex</div><div className="text-[10px] text-[#aab9b0] mt-1 flex items-center gap-1"><MapPin size={10}/> Victoria Island, Lagos</div></div>
       {nav}
-      <div className="p-4 border-t border-[#34443c]"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-[#dce8df] text-[#385342] flex items-center justify-center text-[10px] font-bold">AB</div><div className="flex-1"><div className="text-xs text-white font-bold">Aminu Bello</div><div className="text-[10px] text-[#93a39a]">{role}</div></div><button onClick={()=>notify("Profile settings are demo-only.")}><Settings size={15}/></button></div></div>
+      <div className="p-4 border-t border-[#34443c]"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-[#dce8df] text-[#385342] flex items-center justify-center text-[10px] font-bold">AB</div><div className="flex-1"><div className="text-xs text-white font-bold">{authName}</div><div className="text-[10px] text-[#93a39a]">{role}</div></div><div className="flex items-center gap-3"><button title="Profile settings" onClick={()=>notify("Profile settings are demo-only.")}><Settings size={15}/></button><button title="Sign out" onClick={()=>{setAuthenticated(false);setAuthView("login");setAuthPassword("");}}><LogOut size={15}/></button></div></div></div>
     </aside>
     <div className="main-area md:ml-[248px]">
       <header className="h-[66px] bg-white border-b border-gray-200 flex items-center justify-between px-5 md:px-8 sticky top-0 z-20">

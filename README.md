@@ -36,7 +36,8 @@ npm start
 
 ## What is included
 
-- Role switcher for Site Captain, Project Lead and Admin.
+- Mock sign-in and registration screens with a role selector for Site Captain, Project Lead and Admin.
+- Sign-in accepts any email/password combination; registration immediately opens the demo workspace.
 - Site Captain: Today, Daily log, Stage update, Materials (request/receive/issue), Attendance, Report an issue, Site feed and Inbox.
 - Project Lead: Review queue, review detail, approve and send-back flows, project plan and stages.
 - Admin: Create plan, check draft plan, approval chain and reporting rules.
@@ -49,7 +50,7 @@ npm start
 This is deliberately a **front-end prototype**, not a production system.
 
 - The browser `localStorage` stores demo state on this device only. It is not a secure database and is not shared across users or devices.
-- Role switching is for demonstration. There is no real login or server-side authorization.
+- Login and registration are visual/demo flows only. Credentials are not verified, accounts are not created, and auth form values are not persisted. There is no real login or server-side authorization.
 - Camera, photo evidence, GPS, geofencing, trusted timestamps, file upload, push notifications, voice recording, offline sync, import parsers and WhatsApp/SMS are placeholders or not implemented.
 - Approval actions are simulated in the browser. Production must enforce separation of duties, approval-chain routing, audit events and stage gates on the server.
 - The sample project, names, activity and quantities are fictional demo data.
