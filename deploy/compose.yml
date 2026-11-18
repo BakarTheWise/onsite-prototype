@@ -1,0 +1,105 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+    volumes:
+      - onsite-postgres:/var/lib/postgresql/data
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  app-blue:
+    image: ${ONSITE_IMAGE:-onsite:stable}
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - edge
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- --header=\"Host: $${APP_HOST}\" http://127.0.0.1:3000/api/health | grep -q '\"status\":\"ok\"'"]
+      interval: 10s
+      timeout: 4s
+      retries: 6
+      start_period: 20s
+
+  app-green:
+    image: ${ONSITE_IMAGE:-onsite:stable}
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - edge
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- --header=\"Host: $${APP_HOST}\" http://127.0.0.1:3000/api/health | grep -q '\"status\":\"ok\"'"]
+      interval: 10s
+      timeout: 4s
+      retries: 6
+      start_period: 20s
+
+  migrator:
+    image: ${ONSITE_MIGRATOR_IMAGE:-onsite-migrator:stable}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: migrator
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - database
+    profiles:
+      - migration
+
+  proxy:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    environment:
+      APP_HOST: ${APP_HOST:?Set APP_HOST}
+      NGINX_ENVSUBST_FILTER: ^APP_HOST$
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/upstreams:/etc/nginx/upstreams:ro
+      - ./nginx/errors:/etc/nginx/errors:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - edge
+
+networks:
+  edge:
+  database:
+    internal: true
+
+volumes:
+  onsite-postgres:

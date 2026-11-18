@@ -1,0 +1,514 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CompanyRole {
+  OWNER
+  ADMIN
+  PROJECT_MANAGER
+  TEAM_MEMBER
+  ACCOUNTANT
+  PROCUREMENT_OFFICER
+  VENDOR
+}
+
+enum ProjectRole {
+  OWNER
+  PROJECT_LEAD
+  SITE_ENGINEER
+  QUANTITY_SURVEYOR
+  ACCOUNTANT
+  PROCUREMENT_OFFICER
+  SITE_SUPERVISOR
+  STOREKEEPER
+  SECURITY
+  VENDOR
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+enum PlanTier {
+  INDIVIDUAL
+  ENTERPRISE_S
+  ENTERPRISE_M
+  ENTERPRISE_L
+  CORPORATE
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  IN_REVIEW
+  DONE
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  RETURNED
+  CANCELLED
+}
+
+model User {
+  id              String          @id @default(uuid()) @db.Uuid
+  name            String
+  email           String          @unique
+  emailVerified   Boolean         @default(false)
+  image           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  accounts        Account[]
+  sessions        Session[]
+  companyMembers  CompanyMember[]
+  projectMembers  ProjectMember[]
+  assignedTasks   Task[]          @relation("TaskAssignee")
+  dailyLogs       DailyLog[]
+  attendance      Attendance[]
+  reportedIssues  Issue[]
+  inventoryEvents InventoryTransaction[]
+  approvals       Approval[]     @relation("ApprovalReviewer")
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  accountId             String
+  providerId            String
+  userId                String    @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+model RateLimit {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  count       Int
+  lastRequest Float
+
+  @@map("rate_limits")
+}
+
+model Company {
+  id        String          @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  members   CompanyMember[]
+  projects  Project[]
+  invitations Invitation[]
+  subscription Subscription?
+
+  @@map("companies")
+}
+
+model Subscription {
+  id                    String             @id @default(uuid()) @db.Uuid
+  companyId             String             @unique @db.Uuid
+  plan                  PlanTier           @default(INDIVIDUAL)
+  billingInterval       BillingInterval    @default(MONTHLY)
+  status                SubscriptionStatus @default(TRIALING)
+  staffCount            Int                @default(1)
+  extraProjects         Int                @default(0)
+  planAmountNaira       Decimal            @db.Decimal(16, 2)
+  extraProjectsAmountNaira Decimal         @default(0) @db.Decimal(16, 2)
+  vatAmountNaira        Decimal            @default(0) @db.Decimal(16, 2)
+  trialStartsAt         DateTime           @default(now())
+  trialEndsAt           DateTime
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  company               Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model CompanyMember {
+  id        String           @id @default(uuid()) @db.Uuid
+  companyId String           @db.Uuid
+  userId    String           @db.Uuid
+  role      CompanyRole
+  status    MembershipStatus @default(ACTIVE)
+  joinedAt  DateTime         @default(now())
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId, status])
+  @@index([companyId, status])
+  @@map("company_members")
+}
+
+model Project {
+  id           String          @id @default(uuid()) @db.Uuid
+  companyId    String          @db.Uuid
+  name         String
+  location     String?
+  status       ProjectStatus   @default(PLANNING)
+  budgetNaira  Decimal?        @db.Decimal(16, 2)
+  startDate    DateTime?
+  targetEnd    DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  company      Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  members      ProjectMember[]
+  stages       Stage[]
+  tasks        Task[]
+  approvals    Approval[]
+  dailyLogs    DailyLog[]
+  attendance   Attendance[]
+  issues       Issue[]
+  materials    Material[]
+  vendors      Vendor[]
+  documents    Document[]
+  budgets      Budget[]
+  fundReleases FundRelease[]
+  cashEntries  SiteCashTransaction[]
+  zones        Zone[]
+  gateEntries  GateEntry[]
+  invitations Invitation[]
+  inventoryEvents InventoryTransaction[]
+
+  @@index([companyId, updatedAt])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String           @id @default(uuid()) @db.Uuid
+  projectId String           @db.Uuid
+  userId    String           @db.Uuid
+  role      ProjectRole
+  status    MembershipStatus @default(ACTIVE)
+  joinedAt  DateTime         @default(now())
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId, status])
+  @@index([projectId, status])
+  @@map("project_members")
+}
+
+model Invitation {
+  id        String      @id @default(uuid()) @db.Uuid
+  companyId String      @db.Uuid
+  projectId String?     @db.Uuid
+  email     String
+  tokenHash String      @unique
+  role      CompanyRole?
+  projectRole ProjectRole?
+  expiresAt DateTime
+  acceptedAt DateTime?
+  createdAt DateTime    @default(now())
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project   Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
+}
+
+model Stage {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @db.Uuid
+  name        String
+  position    Int
+  startsAt    DateTime?
+  targetEnd   DateTime?
+  isGate      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@unique([projectId, position])
+  @@map("stages")
+}
+
+model Task {
+  id          String       @id @default(uuid()) @db.Uuid
+  projectId   String       @db.Uuid
+  stageId     String?      @db.Uuid
+  assigneeId  String?      @db.Uuid
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  dueAt       DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage       Stage?       @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  predecessors TaskDependency[] @relation("TaskPredecessor")
+  successors   TaskDependency[] @relation("TaskSuccessor")
+
+  @@index([projectId, status, dueAt])
+  @@index([assigneeId, status])
+  @@map("tasks")
+}
+
+model TaskDependency {
+  id              String @id @default(uuid()) @db.Uuid
+  predecessorId   String @db.Uuid
+  successorId     String @db.Uuid
+  predecessor     Task   @relation("TaskPredecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor       Task   @relation("TaskSuccessor", fields: [successorId], references: [id], onDelete: Cascade)
+
+  @@unique([predecessorId, successorId])
+  @@map("task_dependencies")
+}
+
+model Approval {
+  id           String         @id @default(uuid()) @db.Uuid
+  projectId    String         @db.Uuid
+  submissionId String         @db.Uuid
+  submissionType String
+  reviewerId   String?        @db.Uuid
+  status       ApprovalStatus @default(PENDING)
+  note         String?
+  createdAt    DateTime       @default(now())
+  decidedAt    DateTime?
+  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer     User?          @relation("ApprovalReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status, createdAt])
+  @@map("approvals")
+}
+
+model DailyLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @db.Uuid
+  authorId    String   @db.Uuid
+  logDate     DateTime @db.Date
+  weather     String?
+  workforce   Int?
+  workDone    String
+  issues      String?
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, logDate])
+  @@map("daily_logs")
+}
+
+model Attendance {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  userId    String   @db.Uuid
+  checkedIn DateTime @default(now())
+  checkedOut DateTime?
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, checkedIn])
+  @@map("attendance")
+}
+
+model Issue {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @db.Uuid
+  reporterId  String   @db.Uuid
+  title       String
+  description String
+  priority    String
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, resolvedAt, createdAt])
+  @@map("issues")
+}
+
+model Material {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  name      String
+  unit      String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  events    InventoryTransaction[]
+
+  @@unique([projectId, name])
+  @@map("materials")
+}
+
+model InventoryTransaction {
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String   @db.Uuid
+  materialId String   @db.Uuid
+  actorId    String   @db.Uuid
+  quantity   Decimal  @db.Decimal(14, 3)
+  kind       String
+  note       String?
+  createdAt  DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  actor      User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, materialId, createdAt])
+  @@map("inventory_transactions")
+}
+
+model Vendor {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  name      String
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("vendors")
+}
+
+model Document {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @db.Uuid
+  title       String
+  objectKey   String
+  contentType String
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model Budget {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  name      String
+  amount    Decimal  @db.Decimal(16, 2)
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("budgets")
+}
+
+model FundRelease {
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String   @db.Uuid
+  amount     Decimal  @db.Decimal(16, 2)
+  releasedAt DateTime?
+  createdAt  DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("fund_releases")
+}
+
+model SiteCashTransaction {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @db.Uuid
+  amount      Decimal  @db.Decimal(16, 2)
+  direction   String
+  description String
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("site_cash_transactions")
+}
+
+model Zone {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  name      String
+  stageId   String?  @db.Uuid
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("zones")
+}
+
+model GateEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @db.Uuid
+  recordedById String   @db.Uuid
+  direction    String
+  vehicle      String?
+  loadSummary  String?
+  createdAt    DateTime @default(now())
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@map("gate_entries")
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @db.Uuid
+  actorId    String?  @db.Uuid
+  entityType String
+  entityId   String   @db.Uuid
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@map("audit_events")
+}
